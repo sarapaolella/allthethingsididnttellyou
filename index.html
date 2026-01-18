@@ -1,0 +1,262 @@
+import React, { useState, useEffect } from 'react';
+import { Mail, Send, Book, ArrowLeft } from 'lucide-react';
+
+const UnsaidLetters = () => {
+  const [view, setView] = useState('home');
+  const [letters, setLetters] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedLetter, setSelectedLetter] = useState(null);
+  
+  // Form state
+  const [recipient, setRecipient] = useState('');
+  const [content, setContent] = useState('');
+  const [sender, setSender] = useState('');
+  const [showConfirmation, setShowConfirmation] = useState(false);
+
+  // Load letters on mount and when view changes to read
+  useEffect(() => {
+    if (view === 'read') {
+      loadLetters();
+    }
+  }, [view]);
+
+  const loadLetters = async () => {
+    setLoading(true);
+    try {
+      const result = await window.storage.list('letter:', true);
+      if (result && result.keys) {
+        const letterData = await Promise.all(
+          result.keys.map(async (key) => {
+            try {
+              const data = await window.storage.get(key, true);
+              return data ? JSON.parse(data.value) : null;
+            } catch {
+              return null;
+            }
+          })
+        );
+        setLetters(letterData.filter(l => l !== null).sort((a, b) => b.timestamp - a.timestamp));
+      }
+    } catch (error) {
+      console.log('Nessuna lettera trovata ancora');
+      setLetters([]);
+    }
+    setLoading(false);
+  };
+
+  const submitLetter = async () => {
+    if (!recipient.trim() || !content.trim()) return;
+    
+    setLoading(true);
+    const letter = {
+      recipient: recipient.trim(),
+      content: content.trim(),
+      sender: sender.trim() || 'Anonimo',
+      timestamp: Date.now()
+    };
+
+    try {
+      const key = `letter:${Date.now()}`;
+      await window.storage.set(key, JSON.stringify(letter), true);
+      
+      setRecipient('');
+      setContent('');
+      setSender('');
+      setShowConfirmation(true);
+      
+      setTimeout(() => {
+        setShowConfirmation(false);
+        setView('home');
+      }, 5000);
+    } catch (error) {
+      console.error('Errore nel salvare la lettera:', error);
+    }
+    setLoading(false);
+  };
+
+  // Home View
+  if (view === 'home') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-blue-100 flex items-center justify-center p-4">
+        <div className="text-center max-w-2xl">
+          <h1 className="text-4xl md:text-5xl font-serif text-slate-700 mb-16 leading-tight">
+            tutto quello che non ti ho detto
+          </h1>
+          
+          <div className="flex gap-8 justify-center items-center text-2xl md:text-3xl">
+            <button
+              onClick={() => setView('write')}
+              className="text-slate-700 hover:text-slate-900 transition-colors font-light underline decoration-1 underline-offset-4"
+            >
+              teloscrivoadesso
+            </button>
+            
+            <span className="text-slate-300">\</span>
+            
+            <button
+              onClick={() => setView('read')}
+              className="text-slate-700 hover:text-slate-900 transition-colors font-light underline decoration-1 underline-offset-4"
+            >
+              leggolestoriedeglialtri
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Write View
+  if (view === 'write') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-blue-100 p-4 md:p-8">
+        <div className="max-w-3xl mx-auto">
+          <button
+            onClick={() => setView('home')}
+            className="text-slate-600 hover:text-slate-800 mb-6 flex items-center gap-2 transition-colors"
+          >
+            <ArrowLeft size={20} />
+            Torna indietro
+          </button>
+
+          {showConfirmation ? (
+            <div className="bg-white rounded-lg shadow-2xl p-8 md:p-12 text-center animate-fade-in">
+              <div className="text-6xl mb-6">💌</div>
+              <p className="text-slate-600 text-lg leading-relaxed font-light">
+                Spero ti senta meglio. Adesso il tuo messaggio è tra mille byte del web, arriverà a qualcuno. 
+                <br /><br />
+                Chissà, magari anche a chi volevi davvero.
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow-2xl p-8 md:p-12">
+              <div className="mb-8">
+                <label className="block text-slate-600 mb-2 font-light">Per</label>
+                <input
+                  type="text"
+                  value={recipient}
+                  onChange={(e) => setRecipient(e.target.value)}
+                  placeholder="Inserisci il nome"
+                  className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-300 font-light text-lg"
+                />
+              </div>
+
+              <div className="mb-8">
+                <textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Scrivi tutto quello che non hai mai avuto il coraggio di dire..."
+                  rows="12"
+                  className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-300 resize-none font-light text-lg leading-relaxed"
+                />
+              </div>
+
+              <div className="mb-8">
+                <label className="block text-slate-600 mb-2 font-light">Da (facoltativo)</label>
+                <input
+                  type="text"
+                  value={sender}
+                  onChange={(e) => setSender(e.target.value)}
+                  placeholder="Lascia vuoto per rimanere anonimo"
+                  className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-300 font-light text-lg"
+                />
+              </div>
+
+              <button
+                onClick={submitLetter}
+                disabled={!recipient.trim() || !content.trim() || loading}
+                className="w-full bg-slate-700 hover:bg-slate-800 disabled:bg-slate-300 text-white py-4 rounded-lg transition-colors font-light text-lg flex items-center justify-center gap-2"
+              >
+                <Send size={20} />
+                {loading ? 'Invio...' : 'Invia'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Read View - Letter Detail
+  if (selectedLetter) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-blue-100 p-4 md:p-8">
+        <div className="max-w-3xl mx-auto">
+          <button
+            onClick={() => setSelectedLetter(null)}
+            className="text-slate-600 hover:text-slate-800 mb-6 flex items-center gap-2 transition-colors"
+          >
+            <ArrowLeft size={20} />
+            Torna alle lettere
+          </button>
+
+          <div className="bg-white rounded-lg shadow-2xl p-8 md:p-12">
+            <div className="border-b border-slate-200 pb-4 mb-6">
+              <h2 className="text-3xl font-serif text-slate-700">Per {selectedLetter.recipient}</h2>
+            </div>
+            
+            <div className="prose prose-slate max-w-none mb-8">
+              <p className="whitespace-pre-wrap text-lg leading-relaxed font-light text-slate-600">
+                {selectedLetter.content}
+              </p>
+            </div>
+
+            <div className="text-right text-slate-500 italic font-light">
+              — {selectedLetter.sender}
+            </div>
+            
+            <div className="text-right text-slate-400 text-sm mt-2">
+              {new Date(selectedLetter.timestamp).toLocaleDateString('it-IT', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Read View - Letters Grid
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-blue-100 p-4 md:p-8">
+      <div className="max-w-6xl mx-auto">
+        <button
+          onClick={() => setView('home')}
+          className="text-slate-600 hover:text-slate-800 mb-6 flex items-center gap-2 transition-colors"
+        >
+          <ArrowLeft size={20} />
+          Torna indietro
+        </button>
+
+        <h2 className="text-3xl font-serif text-slate-700 mb-8 text-center">Lettere non inviate</h2>
+
+        {loading ? (
+          <div className="text-center text-slate-500 py-20">Caricamento...</div>
+        ) : letters.length === 0 ? (
+          <div className="text-center text-slate-500 py-20">
+            <Mail size={48} className="mx-auto mb-4 opacity-30" />
+            <p className="font-light">Ancora nessuna lettera scritta.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+            {letters.map((letter, idx) => (
+              <button
+                key={idx}
+                onClick={() => setSelectedLetter(letter)}
+                className="aspect-square bg-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col items-center justify-center p-4 hover:scale-105 border border-slate-100"
+              >
+                <Mail size={32} className="text-slate-400 mb-2" />
+                <p className="text-sm text-slate-600 font-light text-center line-clamp-2">
+                  Per {letter.recipient}
+                </p>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default UnsaidLetters;
