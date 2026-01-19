@@ -27,7 +27,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         
-        // Esponiamo Firebase globalmente per usarlo in React
         window.dbFunctions = { db, collection, addDoc, getDocs, query, orderBy };
     </script>
 </head>
@@ -38,7 +37,7 @@
         const { useState, useEffect } = React;
         const { db, collection, addDoc, getDocs, query, orderBy } = window.dbFunctions;
 
-        // Icone Lucide tramite CDN
+        // Componenti Icone
         const Mail = ({ size = 24, className = "" }) => <i data-lucide="mail" style={{width: size, height: size}} className={className}></i>;
         const Send = ({ size = 24, className = "" }) => <i data-lucide="send" style={{width: size, height: size}} className={className}></i>;
         const ArrowLeft = ({ size = 24, className = "" }) => <i data-lucide="arrow-left" style={{width: size, height: size}} className={className}></i>;
@@ -48,12 +47,9 @@
           useEffect(() => {
             const chars = 'abcdefghilmnopqrstuvwxyz'.split('');
             const items = Array.from({ length: 30 }, (_, i) => ({
-              id: i,
-              char: chars[Math.floor(Math.random() * chars.length)],
-              left: Math.random() * 100,
-              duration: 8 + Math.random() * 10,
-              delay: Math.random() * 5,
-              fontSize: 20 + Math.random() * 30
+              id: i, char: chars[Math.floor(Math.random() * chars.length)],
+              left: Math.random() * 100, duration: 8 + Math.random() * 10,
+              delay: Math.random() * 5, fontSize: 20 + Math.random() * 30
             }));
             setFallingChars(items);
           }, []);
@@ -91,9 +87,9 @@
             try {
               const q = query(collection(db, "letters"), orderBy("timestamp", "desc"));
               const querySnapshot = await getDocs(q);
-              const docs = querySnapshot.docs.map(doc => doc.data());
+              const docs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
               setLetters(docs);
-            } catch (e) { console.error("Errore database:", e); }
+            } catch (e) { console.error("Errore:", e); }
             setLoading(false);
           };
 
@@ -109,8 +105,8 @@
               });
               setRecipient(''); setContent(''); setSender('');
               setShowConfirmation(true);
-              setTimeout(() => { setShowConfirmation(false); setView('home'); }, 5000);
-            } catch (e) { alert("Errore nell'invio a Firebase. Controlla le regole del database!"); }
+              setTimeout(() => { setShowConfirmation(false); setView('home'); }, 4000);
+            } catch (e) { alert("Errore nell'invio"); }
             setLoading(false);
           };
 
@@ -134,26 +130,18 @@
             return (
               <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-blue-100 p-4 md:p-8">
                 <div className="max-w-3xl mx-auto">
-                  <button onClick={() => setView('home')} className="text-slate-600 hover:text-slate-800 mb-6 flex items-center gap-2 transition-colors"><ArrowLeft size={20} /> Torna indietro</button>
+                  <button onClick={() => setView('home')} className="text-slate-600 mb-6 flex items-center gap-2 transition-colors"><ArrowLeft size={20} /> Torna indietro</button>
                   {showConfirmation ? (
-                    <div className="bg-white rounded-lg shadow-2xl p-8 md:p-12 text-center animate-fade-in">
+                    <div className="bg-white rounded-lg shadow-2xl p-8 md:p-12 text-center">
                       <div className="text-6xl mb-6">💌</div>
-                      <p className="text-slate-600 text-lg leading-relaxed font-light">Spero ti senta meglio. Adesso il tuo messaggio è tra mille byte del web, arriverà a qualcuno.<br /><br />Chissà, magari anche a chi volevi davvero.</p>
+                      <p className="text-slate-600 text-lg font-light">Spero ti senta meglio. Messaggio affidato al web.</p>
                     </div>
                   ) : (
                     <div className="bg-white rounded-lg shadow-2xl p-8 md:p-12">
-                      <div className="mb-8">
-                        <label className="block text-slate-600 mb-2 font-light">Per</label>
-                        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="Inserisci il nome" className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-300 font-light text-lg" />
-                      </div>
-                      <div className="mb-8">
-                        <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Scrivi tutto quello che non hai mai avuto il coraggio di dire..." rows="12" className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-300 resize-none font-light text-lg leading-relaxed" />
-                      </div>
-                      <div className="mb-8">
-                        <label className="block text-slate-600 mb-2 font-light">Da (facoltativo)</label>
-                        <input type="text" value={sender} onChange={(e) => setSender(e.target.value)} placeholder="Lascia vuoto per rimanere anonimo" className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-300 font-light text-lg" />
-                      </div>
-                      <button onClick={submitLetter} disabled={!recipient.trim() || !content.trim() || loading} className="w-full bg-slate-700 hover:bg-slate-800 disabled:bg-slate-300 text-white py-4 rounded-lg transition-colors font-light text-lg flex items-center justify-center gap-2">
+                      <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="Per..." className="w-full mb-6 px-4 py-3 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-slate-300 text-lg font-light" />
+                      <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Cosa non hai mai detto?" rows="10" className="w-full mb-6 px-4 py-3 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-slate-300 text-lg font-light resize-none" />
+                      <input type="text" value={sender} onChange={(e) => setSender(e.target.value)} placeholder="Da... (opzionale)" className="w-full mb-6 px-4 py-3 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-slate-300 text-lg font-light" />
+                      <button onClick={submitLetter} disabled={!recipient || !content || loading} className="w-full bg-slate-700 text-white py-4 rounded-lg flex justify-center items-center gap-2 hover:bg-slate-800 disabled:bg-slate-300 transition-colors">
                         <Send size={20} /> {loading ? 'Invio...' : 'Invia'}
                       </button>
                     </div>
@@ -167,10 +155,10 @@
             return (
               <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-blue-100 p-4 md:p-8">
                 <div className="max-w-3xl mx-auto">
-                  <button onClick={() => setSelectedLetter(null)} className="text-slate-600 hover:text-slate-800 mb-6 flex items-center gap-2 transition-colors"><ArrowLeft size={20} /> Torna alle lettere</button>
+                  <button onClick={() => setSelectedLetter(null)} className="text-slate-600 mb-6 flex items-center gap-2 transition-colors"><ArrowLeft size={20} /> Torna alle lettere</button>
                   <div className="bg-white rounded-lg shadow-2xl p-8 md:p-12">
-                    <div className="border-b border-slate-200 pb-4 mb-6"><h2 className="text-3xl font-serif text-slate-700">Per {selectedLetter.recipient}</h2></div>
-                    <p className="whitespace-pre-wrap text-lg leading-relaxed font-light text-slate-600 mb-8">{selectedLetter.content}</p>
+                    <h2 className="text-3xl font-serif text-slate-700 border-b pb-4 mb-6">Per {selectedLetter.recipient}</h2>
+                    <p className="whitespace-pre-wrap text-lg font-light text-slate-600 mb-8 leading-relaxed">{selectedLetter.content}</p>
                     <div className="text-right text-slate-500 italic font-light">— {selectedLetter.sender}</div>
                   </div>
                 </div>
@@ -181,10 +169,27 @@
           return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-blue-100 p-4 md:p-8">
               <div className="max-w-6xl mx-auto">
-                <button onClick={() => setView('home')} className="text-slate-600 hover:text-slate-800 mb-6 flex items-center gap-2 transition-colors"><ArrowLeft size={20} /> Torna indietro</button>
+                <button onClick={() => setView('home')} className="text-slate-600 mb-6 flex items-center gap-2 transition-colors"><ArrowLeft size={20} /> Torna indietro</button>
                 <h2 className="text-3xl font-serif text-slate-700 mb-8 text-center">Lettere non inviate</h2>
-                {loading ? <div className="text-center text-slate-500 py-20">Caricamento...</div> : letters.length === 0 ? (
-                  <div className="text-center text-slate-500 py-20"><Mail size={48} className="mx-auto mb-4 opacity-30" /><p className="font-light">Ancora nessuna lettera scritta.</p></div>
+                {loading ? <div className="text-center py-20">Caricamento...</div> : letters.length === 0 ? (
+                  <div className="text-center py-20"><Mail size={48} className="mx-auto mb-4 opacity-20" /><p className="font-light">Silenzio. Nessuna lettera ancora.</p></div>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-                    {letters.map((letter, idx) => (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6">
+                    {letters.map((l, i) => (
+                      <button key={i} onClick={() => setSelectedLetter(l)} className="aspect-square bg-white rounded-lg shadow-lg hover:shadow-xl transition-all flex flex-col items-center justify-center p-4 border border-slate-100 hover:scale-105">
+                        <Mail size={32} className="text-slate-400 mb-2" />
+                        <p className="text-sm text-slate-600 font-light truncate w-full text-center">Per {l.recipient}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<UnsaidLetters />);
+    </script>
+</body>
+</html>
